@@ -129,3 +129,25 @@ code {
 * {
   box-sizing: border-box;
 }
+/* Professional header */
+.app-header {
+  @apply flex items-center justify-between p-4 max-w-5xl mx-auto;
+}
+.card {
+  background: rgba(255,255,255,0.85);
+  border-radius: 14px;
+  padding: 1rem;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+  border: 1px solid rgba(0,0,0,0.04);
+  backdrop-filter: blur(6px);
+}
+
+/* Auth pages layout */
+.card input, .card textarea {
+  @apply w-full px-3 py-2 border rounded;
+}
+
+/* Small bubble header for optimizer */
+.header-bubble {
+  @apply w-full max-w-3xl mx-auto p-6 rounded-2xl bg-gradient-to-r from-green-100 to-white shadow-md text-center;
+}

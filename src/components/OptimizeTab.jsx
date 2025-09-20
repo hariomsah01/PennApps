@@ -1,144 +1,137 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CountUp from "react-countup";
-import { optimizePrompt } from "../utils/promptOptimizer";
-import apiService from "../services/api";
 
-export default function OptimizeTab({ state, setState }) {
+const taglines = [
+  "✂️ Prompt Shortener — keep it concise.",
+  "🌍 Carbon-Friendly Mode — save energy.",
+  "✨ Clarity Improver — say it better.",
+  "⚡ Efficiency Booster — faster prompts.",
+];
+
+const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:4000";
+
+// simple token estimator: 1 token ≈ 4 characters
+function estimateTokens(text) {
+  if (!text) return 0;
+  const trimmed = text.replace(/\s+/g, " ").trim();
+  if (trimmed.length === 0) return 0;
+  return Math.max(1, Math.ceil(trimmed.length / 4));
+}
+
+// token -> kWh: 0.0003 kWh per 1000 tokens => 3e-7 kWh/token
+const KWH_PER_TOKEN = 0.0003 / 1000;
+const GRID_KGCO2_PER_KWH =
+  parseFloat(process.env.REACT_APP_GRID_KGCO2_PER_KWH) || 0.45;
+
+export default function OptimizeTab() {
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [taglineIndex, setTaglineIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
+
+  const [tokensBefore, setTokensBefore] = useState(0);
+  const [tokensAfter, setTokensAfter] = useState(0);
+  const [co2SavedKg, setCo2SavedKg] = useState(0);
   const [triggerCount, setTriggerCount] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Use external state for persistence
-  const {
-    messages,
-    tokensBefore,
-    tokensAfter,
-    carbonSaved,
-    totalCarbonSaved,
-    sessionStats
-  } = state;
+  const messagesRef = useRef(null);
 
-  const taglines = [
-    "✂️ Prompt Shortener — keep it concise.",
-    "🌍 Carbon-Friendly Mode — save energy.",
-    "✨ Clarity Improver — say it better.",
-    "⚡ Efficiency Booster — faster prompts.",
-  ];
-
-  // cycle through taglines every 3s
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTaglineIndex((prev) => (prev + 1) % taglines.length);
+    const iv = setInterval(() => {
+      setTaglineIndex((t) => (t + 1) % taglines.length);
     }, 3000);
-    return () => clearInterval(interval);
+    return () => clearInterval(iv);
   }, []);
 
-  // Load session stats on component mount
   useEffect(() => {
-    loadSessionStats();
-  }, []);
-
-  const loadSessionStats = async () => {
-    try {
-      const stats = await apiService.getSessionStats();
-      if (stats.success) {
-        setState(prev => ({
-          ...prev,
-          sessionStats: stats.data,
-          totalCarbonSaved: stats.data.sessionStats.totalCarbonSaved
-        }));
-      }
-    } catch (error) {
-      console.error('Error loading session stats:', error);
+    if (messagesRef.current) {
+      messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
     }
-  };
+  }, [messages, isTyping]);
+
+  // format CO2 dynamically
+  function formatCO2(kg) {
+    if (kg >= 1) return `${kg.toFixed(6)} kg`;
+    const g = kg * 1000;
+    if (g >= 1) return `${g.toFixed(3)} g`;
+    return `${(g * 1000).toFixed(2)} mg`;
+  }
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim()) return;
 
-    const userInput = input;
-    setIsLoading(true);
+    setMessages((prev) => [...prev, { text: input, sender: "user" }]);
 
-    // Add user message
-    setState(prev => ({
-      ...prev,
-      messages: [...prev.messages, { text: userInput, sender: "user" }]
-    }));
+    const tb = estimateTokens(input);
+    setTokensBefore(tb);
+
     setInput("");
     setIsTyping(true);
 
-    try {
-      // Use the actual optimization logic
-      const result = optimizePrompt(userInput);
-      
-      setState(prev => ({
-        ...prev,
-        tokensBefore: result.tokensBefore,
-        tokensAfter: result.tokensAfter,
-        carbonSaved: result.carbonSavings.co2Saved,
-        totalCarbonSaved: prev.totalCarbonSaved + result.carbonSavings.co2Saved
-      }));
-      setTriggerCount(true);
-      setTimeout(() => setTriggerCount(false), 200);
+    setTimeout(async () => {
+      let optimized = input
+        .replace(/\b(the|and|a|an|that|please|kindly|just)\b/gi, "")
+        .replace(/\s+/g, " ")
+        .trim();
 
-      // Save optimization to database
-      const saveResult = await apiService.saveOptimization({
-        originalPrompt: result.original,
-        optimizedPrompt: result.optimized,
-        tokensBefore: result.tokensBefore,
-        tokensAfter: result.tokensAfter,
-        tokensSaved: result.tokensSaved,
-        carbonSaved: result.carbonSavings.co2Saved,
-        qualityScore: result.qualityScore,
-        optimizations: result.optimizations,
-        strategy: 'balanced'
-      });
+      const originalLen = optimized.length;
+      const targetLen = Math.max(10, Math.floor(originalLen * 0.75));
+      if (optimized.length > targetLen)
+        optimized = optimized.slice(0, targetLen).trim();
 
-      if (saveResult.success) {
-        console.log('Optimization saved successfully');
-        // Update session stats
-        await loadSessionStats();
-      } else {
-        console.warn('Failed to save optimization:', saveResult.message);
+      const ta = estimateTokens(optimized);
+      const tokensSaved = Math.max(0, tb - ta);
+
+      // ✅ If nothing was saved, just say it's already optimal
+      if (tb === ta) {
+        setMessages((prev) => [
+          ...prev,
+          { text: "✅ Your prompt is already optimal!", sender: "bot" },
+        ]);
+        setIsTyping(false);
+        return;
       }
 
-      setIsTyping(false);
-      setState(prev => ({
+      const kwhSaved = tokensSaved * KWH_PER_TOKEN;
+      const co2Kg = kwhSaved * GRID_KGCO2_PER_KWH;
+
+      setTokensAfter(ta);
+      setCo2SavedKg(co2Kg);
+
+      setTriggerCount(true);
+      setTimeout(() => setTriggerCount(false), 1200);
+
+      setMessages((prev) => [
         ...prev,
-        messages: [
-          ...prev.messages,
-          {
-            text: `🌍 Optimized: ${result.optimized}`,
-            sender: "bot",
-            optimizations: result.optimizations,
-            qualityScore: result.qualityScore
-          }
-        ]
-      }));
-    } catch (error) {
-      console.error('Optimization error:', error);
+        { text: "🌍 Optimized Suggestion: " + optimized, sender: "bot" },
+      ]);
+
       setIsTyping(false);
-      setState(prev => ({
-        ...prev,
-        messages: [
-          ...prev.messages,
-          {
-            text: "❌ Sorry, there was an error optimizing your prompt.",
-            sender: "bot",
-          }
-        ]
-      }));
-    } finally {
-      setIsLoading(false);
-    }
+
+      try {
+        await fetch(`${API_BASE}/api/optimize`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            prompt: input,
+            optimized_prompt: optimized,
+            tokens_before: tb,
+            tokens_after: ta,
+          }),
+        });
+        // notify stats tab immediately
+        window.dispatchEvent(new CustomEvent("stats-updated"));
+      } catch (err) {
+        console.warn("failed to POST /api/optimize", err);
+      }
+    }, 1000 + Math.random() * 700);
   };
 
   return (
-    <div className="flex flex-col h-[85vh] w-full max-w-4xl mx-auto">
-      {/* Hero Bubble Section */}
+    <div className="flex flex-col h-[80vh] w-full max-w-4xl mx-auto">
+      {/* Hero Bubble */}
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -162,14 +155,9 @@ export default function OptimizeTab({ state, setState }) {
         </AnimatePresence>
       </motion.div>
 
-      {/* Chat Section */}
-      <motion.div
-        className="flex flex-col flex-1 card overflow-hidden"
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        {/* Chat Messages */}
-        <div className="flex-1 space-y-3 overflow-y-auto p-4">
+      {/* Chat + Counters */}
+      <motion.div className="flex flex-col flex-1 card overflow-hidden">
+        <div ref={messagesRef} className="flex-1 space-y-3 overflow-y-auto p-4">
           {messages.length === 0 && !isTyping && (
             <p className="text-center text-gray-400 italic">
               Start typing to get eco-optimized suggestions 🌱
@@ -188,26 +176,11 @@ export default function OptimizeTab({ state, setState }) {
               }`}
             >
               {msg.text}
-              {msg.optimizations && (
-                <div className="mt-2 text-xs opacity-75">
-                  <div>Quality: {(msg.qualityScore * 100).toFixed(1)}%</div>
-                  <div className="mt-1">
-                    {msg.optimizations.slice(0, 2).join(", ")}
-                    {msg.optimizations.length > 2 && "..."}
-                  </div>
-                </div>
-              )}
             </motion.div>
           ))}
 
-          {/* Typing Indicator */}
           {isTyping && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="px-4 py-3 rounded-xl shadow bg-gray-200 text-gray-600 self-start inline-flex items-center gap-2"
-            >
+            <motion.div className="px-4 py-3 rounded-xl shadow bg-gray-200 text-gray-600 self-start inline-flex items-center gap-2">
               <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></span>
               <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-150"></span>
               <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-300"></span>
@@ -215,7 +188,6 @@ export default function OptimizeTab({ state, setState }) {
           )}
         </div>
 
-        {/* Token + CO₂ Counters */}
         {(tokensBefore > 0 || tokensAfter > 0) && (
           <div className="grid grid-cols-3 gap-4 p-4 border-t bg-gray-50">
             <div className="bg-white p-3 rounded-lg shadow text-center">
@@ -241,44 +213,35 @@ export default function OptimizeTab({ state, setState }) {
             <div className="bg-white p-3 rounded-lg shadow text-center">
               <p className="text-xl font-bold text-gray-800">
                 {triggerCount ? (
-                  <CountUp end={carbonSaved} decimals={2} duration={1.5} />
+                  <CountUp end={co2SavedKg} decimals={6} duration={1.4} />
                 ) : (
-                  carbonSaved.toFixed(2)
+                  formatCO2(co2SavedKg)
                 )}
               </p>
-              <p className="text-sm text-gray-600">CO₂ saved (g)</p>
+              <p className="text-sm text-gray-600">CO₂ saved</p>
             </div>
           </div>
         )}
 
-        {/* Total Carbon Saved */}
-        {totalCarbonSaved > 0 && (
-          <div className="px-4 py-2 bg-green-50 border-t">
-            <div className="text-center">
-              <span className="text-sm text-gray-600">Total CO₂ saved: </span>
-              <span className="font-bold text-green-600">
-                {totalCarbonSaved.toFixed(2)}g
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Input Bar */}
         <div className="flex gap-3 p-3 border-t bg-white/60 backdrop-blur-lg">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your prompt..."
             className="flex-1 px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-400 outline-none shadow-sm"
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
           />
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={handleSend}
-            disabled={isLoading}
-            className="px-5 py-3 bg-green-500 text-white font-semibold rounded-xl shadow hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-5 py-3 bg-green-500 text-white font-semibold rounded-xl shadow hover:bg-green-600"
           >
-            {isLoading ? 'Saving...' : 'Send'}
+            Send
           </motion.button>
         </div>
       </motion.div>
