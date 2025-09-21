@@ -144,9 +144,9 @@ Built at **PennApps XXV (2024)**
 ## 👨‍💻 Authors
 
 - Hari Om Sah – [GitHub](https://github.com/hariomsah01) | [LinkedIn](https://www.linkedin.com/in/hari-om-sah/)
-- Hari Om Sah – [GitHub](https://github.com/bhavikak20005) | [LinkedIn](https://www.linkedin.com/in/bhavikakothari/)  
-- Hari Om Sah – [GitHub](https://github.com/sujalshah0444) | [LinkedIn](https://www.linkedin.com/in/shahsujal/)
-- Hari Om Sah – [GitHub](https://github.com/Sourish-07) | [LinkedIn](https://www.linkedin.com/in/sourish-mudumby-venugopal-251323358/)  
+- Bhavika Kothari – [GitHub](https://github.com/bhavikak20005) | [LinkedIn](https://www.linkedin.com/in/bhavikakothari/)  
+- Sujal Shah – [GitHub](https://github.com/sujalshah0444) | [LinkedIn](https://www.linkedin.com/in/shahsujal/)
+- Sourish Mudumby Venugopal – [GitHub](https://github.com/Sourish-07) | [LinkedIn](https://www.linkedin.com/in/sourish-mudumby-venugopal-251323358/)  
 - Team Type-less 2025  
 
 ---
