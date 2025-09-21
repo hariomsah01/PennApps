@@ -143,12 +143,15 @@ Built at **PennApps XXV (2024)**
 
 ## 👨‍💻 Authors
 
-- Hari Om Sah – [GitHub](https://github.com/hariomsah01) | [LinkedIn](https://www.linkedin.com/in/hari-om-sah/)  
-- Team PennApps 2024  
+- Hari Om Sah – [GitHub](https://github.com/hariomsah01) | [LinkedIn](https://www.linkedin.com/in/hari-om-sah/)
+- Hari Om Sah – [GitHub](https://github.com/bhavikak20005) | [LinkedIn](https://www.linkedin.com/in/bhavikakothari/)  
+- Hari Om Sah – [GitHub](https://github.com/sujalshah0444) | [LinkedIn](https://www.linkedin.com/in/shahsujal/)
+- Hari Om Sah – [GitHub](https://github.com/Sourish-07) | [LinkedIn](https://www.linkedin.com/in/sourish-mudumby-venugopal-251323358/)  
+- Team Type-less 2025  
 
 ---
 
 ## 📜 License
 
-Licensed under the MIT License.  
+Licensed under the University of Pennsylvania License.  
 See `LICENSE` for details.  
