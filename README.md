@@ -1,4 +1,4 @@
-# 🌱 Type-less
+# Project Type-less
 
 > Write smarter prompts. Save tokens. Save energy. Save the planet.
 
@@ -135,7 +135,7 @@ We welcome contributions:
 
 ## 🏆 Hackathon
 
-Built at **PennApps XXV (2024)**  
+Built at **PennApps XXVI (2025)**  
 - [Devpost Link](https://devpost.com/software/type-less)  
 - [GitHub Repo](https://github.com/hariomsah01/PennApps)  
 
@@ -151,7 +151,11 @@ Built at **PennApps XXV (2024)**
 
 ---
 
+## Learn More
+
+- [React Documentation](https://reactjs.org/)
+- [Create React App Documentation](https://facebook.github.io/create-react-app/docs/getting-started)
+
 ## 📜 License
 
-Licensed under the University of Pennsylvania License.  
-See `LICENSE` for details.  
+Licensed under the University of Pennsylvania License.   
